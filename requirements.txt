@@ -1,0 +1,2 @@
+# no external dependencies — standard library only
+# tested on Python 3.13
