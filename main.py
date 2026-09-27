@@ -34,6 +34,8 @@ def main():
     checkout_parser.add_argument("branch", help="Branch name")
     checkout_parser.add_argument("-b", action="store_true", help="Create branch")
 
+    diff_parser = subparser.add_parser("diff", help="Show changes between working tree and index")
+
     args=parser.parse_args()
 
 
@@ -81,6 +83,11 @@ def main():
                 print("Not a git repository")
                 return
             repo.checkout(args.branch, args.b)
+        elif args.command == "diff":
+            if not repo.git_dir.exists():
+                print("Not a git repository")
+                return
+            repo.diff()
 
 
     except Exception as e:

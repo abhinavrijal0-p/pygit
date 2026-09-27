@@ -1,5 +1,6 @@
 from pathlib import Path
 import json
+import difflib
 from gitobjects import Blob,GitObject,Commit,Tree
 from typing import Dict, List, Optional, Tuple
 
@@ -365,8 +366,6 @@ class Repository():
         if target_commit.tree_hash:
             self.restore_tree(target_commit.tree_hash, self.path)
 
-        self.save_index({})
-
     def status(self):
         index = self.load_index()
         working_files = set()
@@ -492,4 +491,33 @@ class Repository():
             if branch_file.exists():
                 print(f"fatal: A branch named '{name}' already exists.")
                 return
-            branch_file.write_text(commit_hash + "\n")
+            branch_file.write_text(commit_hash + "\n")
+
+    def diff(self):
+        index = self.load_index()
+        working_files = set()
+        
+        for file_path in self.path.rglob("*"):
+            if file_path.is_file() and ".pygit" not in file_path.parts and ".git" not in file_path.parts:
+                working_files.add(str(file_path.relative_to(self.path)).replace("\\", "/"))
+
+        staged_files = set(index.keys())
+
+        for file in sorted(working_files & staged_files):
+            content_bytes = (self.path / file).read_bytes()
+            new_blob = Blob(content_bytes)
+            if new_blob.hash() != index[file]:
+                working_content = (self.path / file).read_text(errors="replace").splitlines()
+                blob_hash = index[file]
+                blob_obj = self.load_object(blob_hash)
+                staged_content = blob_obj.content.decode(errors="replace").splitlines()
+                
+                print(f"diff --pygit a/{file} b/{file}")
+                for line in difflib.unified_diff(
+                    staged_content, 
+                    working_content, 
+                    fromfile=f"a/{file}", 
+                    tofile=f"b/{file}", 
+                    lineterm=""
+                ):
+                    print(line)
