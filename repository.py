@@ -345,3 +345,66 @@ class Repository():
             self.restore_tree(target_commit.tree_hash, self.path)
 
         self.save_index({})
+
+    def status(self):
+        index = self.load_index()
+        working_files = set()
+        
+        for file_path in self.path.rglob("*"):
+            if file_path.is_file() and ".pygit" not in file_path.parts and ".git" not in file_path.parts:
+                working_files.add(str(file_path.relative_to(self.path)).replace("\\", "/"))
+
+        staged_files = set(index.keys())
+        
+        untracked = working_files - staged_files
+        deleted = staged_files - working_files
+        modified = set()
+
+        for file in (working_files & staged_files):
+            content = (self.path / file).read_bytes()
+            blob = Blob(content)
+            if blob.hash() != index[file]:
+                modified.add(file)
+
+        print(f"On branch {self.get_current_branch()}")
+        
+        if staged_files:
+            print("\nChanges to be committed:")
+            for file in sorted(staged_files):
+                print(f"  (staged) {file}")
+                
+        if modified or deleted:
+            print("\nChanges not staged for commit:")
+            for file in sorted(modified):
+                print(f"  (modified) {file}")
+            for file in sorted(deleted):
+                print(f"  (deleted) {file}")
+                
+        if untracked:
+            print("\nUntracked files:")
+            for file in sorted(untracked):
+                print(f"  {file}")
+
+        if not (staged_files or modified or deleted or untracked):
+            print("\nnothing to commit, working tree clean")
+
+    def log(self):
+        current_branch = self.get_current_branch()
+        commit_hash = self.get_branch_commit(current_branch)
+        
+        if not commit_hash:
+            print(f"fatal: your current branch '{current_branch}' does not have any commits yet")
+            return
+            
+        while commit_hash:
+            commit_obj = self.load_object(commit_hash)
+            commit = Commit.from_content(commit_obj.content)
+            
+            print(f"commit {commit_hash}")
+            print(f"Author: {commit.author}")
+            print(f"Date:   {commit.timestamp}")
+            print(f"\n    {commit.message}\n")
+            
+            if not commit.parent_hashes:
+                break
+            commit_hash = commit.parent_hashes[0]

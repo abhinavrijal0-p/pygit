@@ -22,6 +22,9 @@ def main():
         "--author",
         help="Author name and email",
     )
+    
+    status_parser = subparser.add_parser("status", help="Show the working tree status")
+    log_parser = subparser.add_parser("log", help="Show commit logs")
 
     args=parser.parse_args()
 
@@ -50,9 +53,18 @@ def main():
 
             author = args.author or "PyGit user <user@pygit.com>"
             repo.commit(args.message, author)
+        elif args.command == "status":
+            if not repo.git_dir.exists():
+                print("Not a git repository")
+                return
+            repo.status()
+        elif args.command == "log":
+            if not repo.git_dir.exists():
+                print("Not a git repository")
+                return
+            repo.log()
 
 
-        
     except Exception as e:
         print(f"Error:{e}")
         sys.exit(1)
