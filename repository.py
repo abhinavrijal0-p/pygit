@@ -236,7 +236,6 @@ class Repository():
         commit_hash = self.store_object(commit)
 
         self.set_branch_commit(current_branch, commit_hash)
-        self.save_index({})
         print(f"Created commit {commit_hash} on branch {current_branch}")
         return commit_hash
 
@@ -262,6 +261,28 @@ class Repository():
         except Exception as e:
             print(f"Warning: Could not read tree {tree_hash}: {e}")
 
+        return files
+
+    def get_files_with_hashes_from_tree(
+        self,
+        tree_hash: str,
+        prefix: str = "",
+    ) -> Dict[str, str]:
+        files = {}
+        try:
+            tree_obj = self.load_object(tree_hash)
+            tree = Tree.from_content(tree_obj.content)
+            for mode, name, obj_hash in tree.entries:
+                full_name = f"{prefix}{name}"
+                if mode.startswith("100"):
+                    files[full_name] = obj_hash
+                elif mode.startswith("400"):
+                    subtree_files = self.get_files_with_hashes_from_tree(
+                        obj_hash, f"{full_name}/"
+                    )
+                    files.update(subtree_files)
+        except Exception:
+            pass
         return files
 
     def checkout(self, branch: str, create_branch: bool):
@@ -354,8 +375,34 @@ class Repository():
             if file_path.is_file() and ".pygit" not in file_path.parts and ".git" not in file_path.parts:
                 working_files.add(str(file_path.relative_to(self.path)).replace("\\", "/"))
 
+        current_branch = self.get_current_branch()
+        commit_hash = self.get_branch_commit(current_branch)
+        head_files = {}
+        
+        if commit_hash:
+            commit_obj = self.load_object(commit_hash)
+            commit = Commit.from_content(commit_obj.content)
+            if commit.tree_hash:
+                head_files = self.get_files_with_hashes_from_tree(commit.tree_hash)
+
+        # Changes to be committed (index vs HEAD)
+        staged_added = set()
+        staged_modified = set()
+        staged_deleted = set()
+        
+        for file, hash_val in index.items():
+            if file not in head_files:
+                staged_added.add(file)
+            elif head_files[file] != hash_val:
+                staged_modified.add(file)
+                
+        for file in head_files:
+            if file not in index:
+                staged_deleted.add(file)
+
         staged_files = set(index.keys())
         
+        # Changes not staged for commit (working dir vs index)
         untracked = working_files - staged_files
         deleted = staged_files - working_files
         modified = set()
@@ -366,26 +413,34 @@ class Repository():
             if blob.hash() != index[file]:
                 modified.add(file)
 
-        print(f"On branch {self.get_current_branch()}")
+        print(f"On branch {current_branch}")
         
-        if staged_files:
+        has_changes = False
+        if staged_added or staged_modified or staged_deleted:
+            has_changes = True
             print("\nChanges to be committed:")
-            for file in sorted(staged_files):
-                print(f"  (staged) {file}")
+            for file in sorted(staged_added):
+                print(f"  (new file) {file}")
+            for file in sorted(staged_modified):
+                print(f"  (modified) {file}")
+            for file in sorted(staged_deleted):
+                print(f"  (deleted)  {file}")
                 
         if modified or deleted:
+            has_changes = True
             print("\nChanges not staged for commit:")
             for file in sorted(modified):
                 print(f"  (modified) {file}")
             for file in sorted(deleted):
-                print(f"  (deleted) {file}")
+                print(f"  (deleted)  {file}")
                 
         if untracked:
+            has_changes = True
             print("\nUntracked files:")
             for file in sorted(untracked):
                 print(f"  {file}")
 
-        if not (staged_files or modified or deleted or untracked):
+        if not has_changes:
             print("\nnothing to commit, working tree clean")
 
     def log(self):
