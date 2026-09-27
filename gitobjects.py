@@ -1,8 +1,8 @@
+from __future__ import annotations
 import hashlib
 import zlib
 from typing import List, Tuple
 import time
-from __future__ import annotations
 
 class GitObject():
     def __init__(self,obj_type:str,content:bytes):
