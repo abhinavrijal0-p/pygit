@@ -1,12 +1,12 @@
 # PyGit
 
-A lightweight, from-scratch implementation of Git in Python - built to understand and reproduce the core internals of version control rather than to replace Git itself.
+A lightweight, from-scratch implementation of Git in Python built to understand and reproduce the core internals of version control rather than to replace Git itself.
 
 PyGit reimplements Git's content-addressable object model, staging index, and repository metadata, exposing a familiar Git-style CLI for the fundamental workflow: `init -> add -> status -> commit -> branch -> checkout -> diff`.
 
 ## Why
 
-Git's plumbing (blobs, trees, commits, SHA-1 hashing, zlib compression) is usually a black box. This project peels that back by re-implementing it directly - every object PyGit creates is a real, valid Git object, hashed and compressed the same way Git does it internally.
+Git's plumbing (blobs, trees, commits, SHA-1 hashing, zlib compression) is usually a black box. This project peels that back by re-implementing it directly. Every object PyGit creates is a real, valid Git object, hashed and compressed the same way Git does it internally.
 
 ## Features
 
