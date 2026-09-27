@@ -26,6 +26,14 @@ def main():
     status_parser = subparser.add_parser("status", help="Show the working tree status")
     log_parser = subparser.add_parser("log", help="Show commit logs")
 
+    branch_parser = subparser.add_parser("branch", help="List, create, or delete branches")
+    branch_parser.add_argument("name", nargs="?", help="Branch name")
+    branch_parser.add_argument("-d", action="store_true", help="Delete branch")
+
+    checkout_parser = subparser.add_parser("checkout", help="Checkout a branch")
+    checkout_parser.add_argument("branch", help="Branch name")
+    checkout_parser.add_argument("-b", action="store_true", help="Create branch")
+
     args=parser.parse_args()
 
 
@@ -63,6 +71,16 @@ def main():
                 print("Not a git repository")
                 return
             repo.log()
+        elif args.command == "branch":
+            if not repo.git_dir.exists():
+                print("Not a git repository")
+                return
+            repo.branch(args.name, args.d)
+        elif args.command == "checkout":
+            if not repo.git_dir.exists():
+                print("Not a git repository")
+                return
+            repo.checkout(args.branch, args.b)
 
 
     except Exception as e:

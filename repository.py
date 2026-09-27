@@ -462,4 +462,34 @@ class Repository():
             
             if not commit.parent_hashes:
                 break
-            commit_hash = commit.parent_hashes[0]
+            commit_hash = commit.parent_hashes[0]
+
+    def branch(self, name: Optional[str] = None, delete: bool = False):
+        if not name:
+            current = self.get_current_branch()
+            for branch_file in sorted(self.heads_dir.iterdir()):
+                if branch_file.name == current:
+                    print(f"* {branch_file.name}")
+                else:
+                    print(f"  {branch_file.name}")
+        elif delete:
+            current = self.get_current_branch()
+            if name == current:
+                print(f"Cannot delete branch '{name}' checked out")
+                return
+            branch_file = self.heads_dir / name
+            if branch_file.exists():
+                branch_file.unlink()
+                print(f"Deleted branch {name}")
+            else:
+                print(f"branch '{name}' not found.")
+        else:
+            commit_hash = self.get_branch_commit(self.get_current_branch())
+            if not commit_hash:
+                print("fatal: not a valid object name: 'master'")
+                return
+            branch_file = self.heads_dir / name
+            if branch_file.exists():
+                print(f"fatal: A branch named '{name}' already exists.")
+                return
+            branch_file.write_text(commit_hash + "\n")
